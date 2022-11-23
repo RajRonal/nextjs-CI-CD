@@ -1,0 +1,16 @@
+name: Build and Deploy
+on:
+  push:
+    branches:
+       -main
+jobs:
+  name: build,publish and deploy
+  runs-on: ubuntu-latest
+  steps:
+    - name: set up environmnet variables
+      run: |-
+        if [["${{GITHUB.base_ref}}" =="main" || "${{GITHUB.ref}}" == "refs/heads/main"]];
+          echo "container_name=ronal" >> "$GITHHUB_ENV"
+        fi
+    - name: checkout
+      uses: actions/checkout@v2
