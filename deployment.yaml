@@ -1,6 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
-metadta: 
+metadata: 
   name: nextjs-test
   labels:
     app: front-end
