@@ -52,9 +52,8 @@ jobs:
         run: |-
           docker build \
             --tag "gcr.io/$PROJECT_ID/$IMAGE:$BRANCH" \
-            --build-arg NEXT_PUBLIC_RONAL_VAR="${{ env.NEXT_PUBLIC_RONAL_VAR }}" . \
-            
-            .
+            --build-arg NEXT_PUBLIC_RONAL_VAR="${{ env.NEXT_PUBLIC_RONAL_VAR }}" \
+            . 
 
       # Push the Docker image to Google Container Registry
       - name: Publish to GCR
