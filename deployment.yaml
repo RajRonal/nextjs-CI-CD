@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadta: 
+  name: nextjs-test
+  labels:
+    app: front-end
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+       app: front-end
+  template:
+    metadata:
+      labels: front-end
+    spec:
+      containers:
+      - name: nextjs-test
+        image: nextjs-test
+        ports:
+        - containerPort: 3000
+        
+---
+
+apiVersion: v1
+kind: Service
+metadata: 
+  name: nextjs-test-service
+spec:
+  selectors:
+    app: front-end
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000       
+    protocol: TCP
+    
+    

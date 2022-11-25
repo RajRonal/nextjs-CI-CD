@@ -1,16 +1,76 @@
-name: Build and Deploy
+name: build and deploy
 on:
   push:
     branches:
-       -main
+      - main
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  SERVICE_ACCOUNT_KEY: ${{ secrets.GKE_SA_SECRET }}
+  IMAGE: nextjs-test
+  NEXT_PUBLIC_RONAL_VAR : ${{ secrets.NEXT_PUBLIC_RONAL }}
+
 jobs:
-  name: build,publish and deploy
-  runs-on: ubuntu-latest
-  steps:
-    - name: set up environmnet variables
-      run: |-
-        if [["${{GITHUB.base_ref}}" =="main" || "${{GITHUB.ref}}" == "refs/heads/main"]];
-          echo "container_name=ronal" >> "$GITHHUB_ENV"
-        fi
-    - name: checkout
-      uses: actions/checkout@v2
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set branch name
+        run: echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
+      - name: Set branch environments
+        run: |-
+          if [[ "${{github.base_ref}}" == "main" || "${{github.ref}}" == "refs/heads/main" ]]; then
+             echo "GKE_CLUSTER=nextjs-test" >> "$GITHUB_ENV"
+             echo "DEPLOYMENT_NAME=nextjs-test" >> "$GITHUB_ENV"
+             echo "CONTAINER_NAME=nextjs-test" >> "$GITHUB_ENV"
+             echo "GKE_ZONE=asia-east2-a" >> "$GITHUB_ENV"
+          fi
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # Setup gcloud CLI
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@94337306dda8180d967a56932ceb4ddcf01edae7
+        with:
+          service_account_key: ${{ env.SERVICE_ACCOUNT_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      # Configure docker to use the gcloud command-line tool as a credential helper
+      - name: Configure docker with gcloud
+        run: |-
+          gcloud --quiet auth configure-docker
+
+      # Get the GKE credentials so we can deploy to the cluster
+      - name: Configure GKE Credentials
+        uses: google-github-actions/get-gke-credentials@fb08709ba27618c31c09e014e1d8364b02e5042e
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_ZONE }}
+          credentials: ${{ env.SERVICE_ACCOUNT_KEY }}
+
+      # Build the Docker image
+      - name: Build docker image
+        run: |-
+          docker build \
+            --tag "gcr.io/$PROJECT_ID/$IMAGE:$BRANCH-$GITHUB_SHA" \
+            --build-arg NEXT_PUBLIC_RONAL_VAR= "${{ env.NEXT_PUBLIC_RONAL_VAR }} \
+            
+            .
+
+      # Push the Docker image to Google Container Registry
+      - name: Publish to GCR
+        run: |-
+          docker push "gcr.io/$PROJECT_ID/$IMAGE:$BRANCH-$GITHUB_SHA"
+
+      # Deploy the Docker image to the GKE cluster
+      - name: Set up Kustomize
+        run: |-
+           curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+           chmod u+x ./kustomize
+
+    # Deploy the Docker image to the GKE cluster
+      - name: Deploy
+        run: |-
+          ./kustomize edit set image gcr.io/PROJECT_ID/IMAGE:TAG=gcr.io/$PROJECT_ID/$IMAGE:$BRANCH-$GITHUB_SHA
+          ./kustomize build . | kubectl apply -f -
+          kubectl rollout status deployment/$DEPLOYMENT_NAME
+          kubectl get services -o wide
