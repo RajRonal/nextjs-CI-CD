@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: nextjs-test
-        image: nextjs-test
+        image: gcr.io/metal-sky-367508/nextjs-test@sha256:c4b2f16f8731e6c972f6ab47d9a858e5cc69acff4c4b13e8e78807ed61fb7423
         ports:
         - containerPort: 3000
         
