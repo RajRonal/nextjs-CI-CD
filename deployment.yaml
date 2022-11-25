@@ -27,7 +27,8 @@ kind: Service
 metadata: 
   name: nextjs-test-service
 spec:
-  selectors:
+  type: LoadBalancer
+  selector:
     app: front-end
   ports:
   - name: http
